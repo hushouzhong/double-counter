@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f5f5f5">
+  <title>手机版双表计数器</title>
+  <style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body { margin: 0; min-height: 100vh; min-height: 100dvh; background: #f5f5f5; color: #1a1a1a; font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif; }
+    .app { max-width: 600px; margin: auto; padding: max(16px, env(safe-area-inset-top)) 14px calc(22px + env(safe-area-inset-bottom)); }
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; } h1 { margin: 0; font-size: 21px; } .summary { padding: 7px 12px; border-radius: 10px; background: #fff; color: #777; font-size: 12px; } .summary b { color: #1a1a1a; font-size: 17px; }
+    .panel, .bottom-bar { border: 1px solid #e0e0e0; border-radius: 13px; background: #fff; } .panel { padding: 12px; margin-bottom: 14px; box-shadow: 0 2px 8px #00000008; }
+    .input-row { display: flex; gap: 8px; } input { flex: 1; min-width: 0; padding: 11px 12px; border: 1px solid #d9d9d9; border-radius: 10px; background: #fff; font: inherit; font-size: 16px; outline: none; } input:focus { border-color: #1a1a1a; }
+    button { border: 0; border-radius: 10px; background: #1a1a1a; color: #fff; font: 600 14px inherit; cursor: pointer; touch-action: manipulation; transition: transform .08s, opacity .15s; } button:active { transform: scale(.96); opacity: .75; } .record { padding: 0 16px; }
+    .keypad { display: grid; grid-template-columns: repeat(9, 1fr); gap: 5px; margin-top: 10px; } .key { aspect-ratio: 1; min-height: 31px; padding: 0; border: 1px solid #e1e3e7; background: #fafafa; color: #30343a; font-size: 13px; } .key.zero { border-color: #1a1a1a; background: #1a1a1a; color: #fff; }
+    .hint, .history { margin: 9px 1px 0; color: #7d8490; font-size: 12px; } .history span { color: #1a1a1a; font-weight: 500; }
+    section { margin-top: 17px; } h2 { margin: 0 1px 8px; color: #555; font-size: 14px; font-weight: 600; } .grid-nums { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; } .grid-groups { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
+    .cell { min-height: 51px; padding: 5px 2px; border: 1px solid #e1e3e7; border-radius: 9px; background: #fff; text-align: center; transition: .15s; } .cell .label { color: #9299a4; font-size: 9px; } .cell .val { min-height: 23px; color: #1a1a1a; font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; } .cell.empty .val { color: #c7cbd1; } .cell.zero-cell { border-color: #777; background: #fafafa; } .cell.flash { border-color: #1a1a1a; background: #e9e9e9; transform: scale(1.025); }
+    .bottom-bar { margin-top: 9px; padding: 9px 10px; background: #fafafa; } .bottom-title { margin-bottom: 6px; color: #9299a4; font-size: 11px; } .bottom-list { display: flex; flex-wrap: wrap; gap: 5px; } .bottom-item { padding: 3px 7px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; color: #1a1a1a; font-size: 12px; } .bottom-item small { color: #999; font-size: 10px; } .bottom-item.null-item { border-color: #e97772; background: #fff5f4; color: #cf332c; }
+    .last { margin: 13px 2px 0; color: #6f7785; font-size: 12px; } .last span { color: #1a1a1a; font-weight: 500; }
+    .tools { display: flex; gap: 8px; margin-top: 15px; } .tools button { flex: 1; padding: 10px 5px; border: 1px solid #d9d9d9; background: #fff; color: #666; } .tools .reset { color: #c8403b; border-color: #edb4b1; }
+    .modal { position: fixed; inset: 0; z-index: 5; display: none; align-items: flex-end; background: #0008; } .sheet { width: 100%; max-width: 600px; margin: auto; padding: 18px 14px calc(18px + env(safe-area-inset-bottom)); border-radius: 18px 18px 0 0; background: #fff; } .sheet h3 { margin: 0 0 10px; } textarea { width: 100%; height: 170px; padding: 9px; border: 1px solid #d9d9d9; border-radius: 9px; font: 12px/1.4 ui-monospace, monospace; } .modal-actions { display: flex; gap: 8px; margin-top: 10px; } .modal-actions button { flex: 1; padding: 11px; } .modal-actions .cancel { background: #eee; color: #555; }
+    .toast { position: fixed; left: 50%; bottom: calc(25px + env(safe-area-inset-bottom)); z-index: 8; padding: 8px 14px; border-radius: 8px; transform: translate(-50%, 15px); background: #303030; color: #fff; font-size: 13px; opacity: 0; pointer-events: none; transition: .2s; } .toast.show { transform: translate(-50%,0); opacity: .95; }
+    @media (max-width: 370px) { .grid-nums { grid-template-columns: repeat(5,1fr); } .keypad { gap: 4px; } }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header><h1>双表计数器</h1><div class="summary">已操作 <b id="totalCount">0</b> 次</div></header>
+    <div class="panel">
+      <div class="input-row"><input id="numIn" type="number" min="0" max="36" step="1" inputmode="numeric" placeholder="输入 0–36 的数字"><button class="record" id="addBtn">记录</button></div>
+      <div class="keypad" id="keypad"></div>
+      <p class="hint">输入或点击数字，同时更新 37 数表与 13 组表，两个表共用操作序号。</p>
+      <p class="history">操作记录：<span id="histList">—</span></p>
+    </div>
+    <section><h2>37 数表（0–36 各数字独立）</h2><div class="grid-nums" id="gridNums"></div><div class="bottom-bar"><div class="bottom-title" id="bottom10Title"></div><div class="bottom-list" id="bottom10List"></div></div></section>
+    <section><h2>13 组表（0 独立 + 12 组）</h2><div class="grid-groups" id="gridGroups"></div><div class="bottom-bar"><div class="bottom-title" id="bottom3Title"></div><div class="bottom-list" id="bottom3List"></div></div></section>
+    <p class="last">最近：<span id="lastInfo">—</span></p>
+    <div class="tools"><button id="exportBtn">导出备份</button><button id="importBtn">导入恢复</button><button class="reset" id="resetBtn">归零</button></div>
+  </main>
+  <div class="modal" id="modal"><div class="sheet"><h3>导入备份</h3><textarea id="importText" placeholder="粘贴备份文本"></textarea><div class="modal-actions"><button class="cancel" id="cancelBtn">取消</button><button id="confirmBtn">确认导入</button></div></div></div><div class="toast" id="toast">备份已复制</div>
+  <script>
+    (() => {
+      const STORAGE = 'doubleCounterSequenceMobile';
+      const groups = [{name:'0',start:0,end:0,bCol:2,isZero:true}, ...Array.from({length:12}, (_, i) => { const n=i*3+1; return {name:String(n),start:n,end:n+2,bCol:i+3,isZero:false}; })];
+      const empty = () => ({numbers:Array(37).fill(null), groupValues:Array(13).fill(null), history:[], seq:0}); let state = empty();
+      const $ = id => document.getElementById(id);
+      function normalize(data) { const out=empty(); if (!data || typeof data !== 'object') return out; out.seq=Math.max(0,Number(data.seq)||0); out.numbers=Array.from({length:37},(_,i)=>Number.isInteger(data.numbers?.[i])&&data.numbers[i]>=0?data.numbers[i]:null); out.groupValues=Array.from({length:13},(_,i)=>Number.isInteger(data.groupValues?.[i])&&data.groupValues[i]>=0?data.groupValues[i]:null); out.history=Array.isArray(data.history)?data.history.filter(h=>Number.isInteger(h?.num)&&Number.isInteger(h?.gidx)&&Number.isInteger(h?.seq)).slice(-1000):[]; return out; }
+      function load(){ try { state=normalize(JSON.parse(localStorage.getItem(STORAGE))); } catch { state=empty(); } } function save(){ localStorage.setItem(STORAGE,JSON.stringify(state)); }
+      function groupIndex(n) { return n === 0 ? 0 : Math.floor((n - 1) / 3) + 1; }
+      function cell(n, v, isGroup=false) { const name=isGroup ? `${groups[n].name} B${groups[n].bCol}` : `A${n+2}=${n}`; const range=isGroup ? `<div class="label">${groups[n].isZero?'仅 0':groups[n].start+'–'+groups[n].end}</div>` : ''; return `<div class="cell ${v===null?'empty':''} ${isGroup&&groups[n].isZero?'zero-cell':''}" data-${isGroup?'group':'num'}="${n}"><div class="label">${name}</div><div class="val">${v===null?'—':v}</div>${range}</div>`; }
+      function renderItems(id, items){ $(id).innerHTML=items.map(item=>`<span class="bottom-item ${item.val===null?'null-item':''}">${item.name} <small>(${item.val===null?'未':item.val})</small></span>`).join(''); }
+      function updateBottoms(){ const nums=state.numbers.map((val,name)=>({name,val})); const missing=nums.filter(x=>x.val===null); if(missing.length>10){$('bottom10Title').textContent=`未出数共 ${missing.length} 个（超过 10 个，显示全部未出数）`;renderItems('bottom10List',missing);} else {$('bottom10Title').textContent='排名靠后 10 名（最久未更新 → 未操作视为最后一名）';renderItems('bottom10List',nums.sort((a,b)=>(a.val??-1)-(b.val??-1)||a.name-b.name).slice(0,10));}
+        const gs=groups.slice(1).map((g,i)=>({name:g.name,val:state.groupValues[i+1]})); const gm=gs.filter(x=>x.val===null); if(gm.length>3){$('bottom3Title').textContent=`0 除外未出组共 ${gm.length} 个（超过 3 个，显示全部未出组）`;renderItems('bottom3List',gm);} else {$('bottom3Title').textContent='0 除外排名靠后 3 名（未操作视为最后一名）';renderItems('bottom3List',gs.sort((a,b)=>(a.val??-1)-(b.val??-1)).slice(0,3));} }
+      function render(){ $('gridNums').innerHTML=state.numbers.map((v,n)=>cell(n,v)).join(''); $('gridGroups').innerHTML=state.groupValues.map((v,n)=>cell(n,v,true)).join(''); $('histList').textContent=state.history.slice(-10).map(h=>`${h.num}→${h.seq}`).join('　')||'—'; $('totalCount').textContent=state.seq; const h=state.history.at(-1); $('lastInfo').textContent=h ? `${h.num} → 数${h.num}(B${h.num+2}) + ${groups[h.gidx].isZero?'0':groups[h.gidx].name}(B${groups[h.gidx].bCol}) = ${h.seq}` : '—'; updateBottoms(); }
+      function flash(selector){ const el=document.querySelector(selector); if(el){el.classList.add('flash');setTimeout(()=>el.classList.remove('flash'),350);} }
+      function record(value){ const n=Number(value); if(!Number.isInteger(n)||n<0||n>36){$('numIn').style.borderColor='#e53935';setTimeout(()=>$('numIn').style.borderColor='',600);return;} const g=groupIndex(n); state.seq++; state.numbers[n]=state.seq;state.groupValues[g]=state.seq;state.history.push({num:n,gidx:g,seq:state.seq});save();render();flash(`[data-num="${n}"]`);flash(`[data-group="${g}"]`);$('numIn').value='';$('numIn').focus(); }
+      function toast(msg){$('toast').textContent=msg;$('toast').classList.add('show');setTimeout(()=>$('toast').classList.remove('show'),1500);}
+      $('keypad').innerHTML=Array.from({length:37},(_,n)=>`<button class="key ${n===0?'zero':''}" data-number="${n}">${n}</button>`).join(''); $('keypad').onclick=e=>{const b=e.target.closest('[data-number]');if(b)record(b.dataset.number);}; $('addBtn').onclick=()=>record($('numIn').value); $('numIn').onkeydown=e=>{if(e.key==='Enter')record(e.target.value);};
+      $('resetBtn').onclick=()=>{if(confirm('确定清空所有记录吗？')){state=empty();save();render();$('numIn').focus();}}; $('exportBtn').onclick=async()=>{const text=JSON.stringify(state,null,2);try{await navigator.clipboard.writeText(text);toast('备份已复制');}catch{prompt('请复制备份文本：',text);}}; $('importBtn').onclick=()=>{$('importText').value='';$('modal').style.display='flex';$('importText').focus();}; $('cancelBtn').onclick=()=>$('modal').style.display='none'; $('confirmBtn').onclick=()=>{try{state=normalize(JSON.parse($('importText').value));save();render();$('modal').style.display='none';toast('导入成功');}catch{alert('备份文本格式不正确。');}}; $('modal').onclick=e=>{if(e.target===$('modal'))$('modal').style.display='none';}; load();render();
+    })();
+  </script>
+</body>
+</html>
